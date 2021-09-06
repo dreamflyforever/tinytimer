@@ -5,17 +5,21 @@
 #include <time.h>
 #include <sys/time.h>
 #include <assert.h>
+#include <string.h>
+
 #include "list.h"
 
-typedef  void (*FUNC)(int);
+typedef void (*FUNC)(int);
 
 typedef struct TIMER {
+	char *name;
 	LIST list;
-	int num;
+	int timeout;
+	int copy;
 	FUNC func;
 } TIMER;
 
-TIMER head;
+static TIMER head;
 
 void b(int a)
 {
@@ -27,10 +31,11 @@ void a(int b)
 	printf("timer start %s\n", __func__);
 }
 
-int user_timer_create(int second, FUNC func)
+int user_timer_create(char *name, int second, FUNC func)
 {
 	TIMER *t = malloc(sizeof(TIMER));
-	t->num = second;
+	t->timeout = second;
+	t->copy = second;
 	t->func = func;
 	list_insert_behind(&head.list, &t->list);
 	return 0;
@@ -43,19 +48,21 @@ void sigroutine(int signo)
 	while (!is_list_last(tmp)) {
 		d = list_entry(tmp->next, TIMER, list);
 		tmp = tmp->next;
-		if (d->num == 0)
+		if (d->timeout == 0) {
 			d->func(0);
-		else
-			d->num--;
+			d->timeout = d->copy;
+		} else {
+			d->timeout--;
+		}
 	}
 }
 
-int system_clock_init()
+int timer_init()
 {
 	int second  = 1;
 	struct itimerval value, ovalue;
 
-	printf("process id is %d\n", getpid());
+	//printf("process id is %d\n", getpid());
 	signal(SIGALRM, sigroutine);
 	value.it_value.tv_sec = second;
 	value.it_value.tv_usec = 0;
@@ -66,13 +73,27 @@ int system_clock_init()
 	return 0;
 }
 
+int reset_timer(char *name)
+{
+	LIST *tmp = &head.list;
+	TIMER *d;
+	while (!is_list_last(tmp)) {
+		d = list_entry(tmp->next, TIMER, list);
+		tmp = tmp->next;
+		if (0 == strncmp(d->name, name, strlen(name))) {
+			d->timeout = 0;
+		}
+	}
+	return 0;
+}
+
 int main()
 {
 	list_init(&head.list);
-	system_clock_init();
+	timer_init();
 
-	user_timer_create(1, b);
-	user_timer_create(2, a);
+	user_timer_create("timer1", 5, b);
+	user_timer_create("timer2", 10, a);
 	for (;;);
 	return 0;
 }
