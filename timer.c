@@ -19,11 +19,13 @@ typedef struct TIMER {
 	FUNC func;
 } TIMER;
 
+int reset_timer(char *name);
 static TIMER head;
 
 void b(int a)
 {
 	printf("timer start %s\n", __func__);
+	reset_timer("timer2");
 }
 
 void a(int b)
@@ -34,6 +36,7 @@ void a(int b)
 int user_timer_create(char *name, int second, FUNC func)
 {
 	TIMER *t = malloc(sizeof(TIMER));
+	t->name = name;
 	t->timeout = second;
 	t->copy = second;
 	t->func = func;
@@ -81,7 +84,8 @@ int reset_timer(char *name)
 		d = list_entry(tmp->next, TIMER, list);
 		tmp = tmp->next;
 		if (0 == strncmp(d->name, name, strlen(name))) {
-			d->timeout = 0;
+			d->timeout = d->copy;
+			//printf("found %s\n", d->name);
 		}
 	}
 	return 0;
